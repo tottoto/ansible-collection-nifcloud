@@ -1,0 +1,12 @@
+namespace: tottoto
+name: nifcloud
+version: 0.1.0
+readme: README.md
+authors:
+  - tottoto (github.com/tottoto)
+license_file: LICENSE
+tags: [nifcloud, cloud]
+repository: https://github.com/tottoto/ansible-collection-nifcloud
+documentation: https://github.com/tottoto/ansible-collection-nifcloud/blob/main/README.md
+homepage: https://github.com/tottoto/ansible-collection-nifcloud
+issues: https://github.com/tottoto/ansible-collection-nifcloud/issues
