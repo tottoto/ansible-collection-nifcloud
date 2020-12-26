@@ -1,0 +1,3 @@
+__pypackages__/
+*.egg-info/
+.pdm.toml
