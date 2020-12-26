@@ -16,6 +16,7 @@ version = "0.1.0"
 nifcloud = "==0.3.1"
 
 [tool.pdm.dev-dependencies]
+ansible = ">=2.10.0"
 autopep8 = "*"
 
 [[tool.pdm.source]]
