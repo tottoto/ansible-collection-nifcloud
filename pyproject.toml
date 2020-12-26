@@ -1,0 +1,23 @@
+[build-system]
+build-backend = ["pdm.pep517.api"]
+requires = ["pdm-pep517"]
+
+[tool]
+[tool.pdm]
+author = "tottoto <tottotodev@gmail.com>"
+description = ""
+homepage = ""
+license = "GPL-3.0"
+name = "ansible-collection-nifcloud"
+python_requires = ">=3.8"
+version = "0.1.0"
+
+[tool.pdm.dependencies]
+nifcloud = "==0.3.1"
+
+[tool.pdm.dev-dependencies]
+
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
