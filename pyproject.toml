@@ -16,8 +16,12 @@ version = "0.1.0"
 nifcloud = "==0.3.1"
 
 [tool.pdm.dev-dependencies]
+autopep8 = "*"
 
 [[tool.pdm.source]]
 name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
+
+[tool.autopep8]
+max_line_length = 100
