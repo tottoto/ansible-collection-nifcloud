@@ -117,12 +117,15 @@ def find_key_pair(nifcloud_client, name):
 def create_key_pair(module, nifcloud_client, name, password, description):
     found_key = find_key_pair(nifcloud_client, name)
     if found_key is None:
-        response = nifcloud_client.create_key_pair(
-            KeyName=name,
-            Password=password,
-            Description=description
-        )
-        key_data = extract_key_data(response)
+        if not module.check_mode:
+            response = nifcloud_client.create_key_pair(
+                KeyName=name,
+                Password=password,
+                Description=description
+            )
+            key_data = extract_key_data(response)
+        else:
+            key_data = None
         module.exit_json(changed=True, key=key_data, msg='key pair created')
     else:
         key_data = extract_key_data(found_key)
@@ -132,8 +135,12 @@ def create_key_pair(module, nifcloud_client, name, password, description):
 def delete_key_pair(module, nifcloud_client, name):
     found_key = find_key_pair(nifcloud_client, name)
     if found_key is not None:
-        nifcloud_client.delete_key_pair(KeyName=name)
-        module.exit_json(changed=True, key=None, msg='key pair deleted')
+        if not module.check_mode:
+            nifcloud_client.delete_key_pair(KeyName=name)
+            key_data = None
+        else:
+            key_data = extract_key_data(found_key)
+        module.exit_json(changed=True, key=key_data, msg='key pair deleted')
     else:
         module.exit_json(changed=False, key=None, msg='key did not exist')
 
@@ -141,25 +148,31 @@ def delete_key_pair(module, nifcloud_client, name):
 def import_key_pair(module, nifcloud_client, name, key_material, description, force):
     found_key = find_key_pair(nifcloud_client, name)
     if found_key is None:
-        response = nifcloud_client.import_key_pair(
-            KeyName=name,
-            PublicKeyMaterial=key_material,
-            Description=description
-        )
-        key_data = extract_key_data(response)
-        module.exit_json(changed=True, key=key_data, msg='key pair created')
-    elif force:
-        new_fingerprint = get_key_fingerprint(
-            module, nifcloud_client, key_material
-        )
-        if found_key['KeyFingerprint'] != new_fingerprint:
-            nifcloud_client.delete_key_pair(KeyName=name)
+        if not module.check_mode:
             response = nifcloud_client.import_key_pair(
                 KeyName=name,
                 PublicKeyMaterial=key_material,
                 Description=description
             )
             key_data = extract_key_data(response)
+        else:
+            key_data = None
+        module.exit_json(changed=True, key=key_data, msg='key pair created')
+    elif force:
+        new_fingerprint = get_key_fingerprint(
+            module, nifcloud_client, key_material
+        )
+        if found_key['KeyFingerprint'] != new_fingerprint:
+            if not module.check_mode:
+                nifcloud_client.delete_key_pair(KeyName=name)
+                response = nifcloud_client.import_key_pair(
+                    KeyName=name,
+                    PublicKeyMaterial=key_material,
+                    Description=description
+                )
+                key_data = extract_key_data(response)
+            else:
+                key_data = None
             module.exit_json(changed=True, key=key_data, msg='key pair updated')
     key_data = extract_key_data(found_key)
     module.exit_json(changed=False, key=key_data, msg='key pair already exist')
@@ -194,7 +207,7 @@ def run_module():
         argument_spec=module_args,
         mutually_exclusive=[('password', 'key_material')],
         required_if=[('state', 'present', ('password', 'key_material'), True)],
-        supports_check_mode=False
+        supports_check_mode=True
     )
 
     nifcloud_client = nifcloud.session.get_session().create_client('computing')
