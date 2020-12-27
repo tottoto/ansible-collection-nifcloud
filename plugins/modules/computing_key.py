@@ -7,6 +7,8 @@ import botocore
 import nifcloud
 from ansible.module_utils.basic import AnsibleModule
 
+from ..module_utils.core import module_core_args
+
 DOCUMENTATION = '''
 ---
 module: computing_key
@@ -46,6 +48,10 @@ options:
         required: false
         default: ''
         type: str
+
+extends_documentation_fragment:
+  - tottoto.nifcloud.nifcloud_credentials
+  - tottoto.nifcloud.nifcloud_region
 
 requirements: [nifcloud]
 author:
@@ -194,14 +200,15 @@ def get_key_fingerprint(module, nifcloud_client, key_material):
 
 
 def run_module():
-    module_args = dict(
+    module_args = module_core_args()
+    module_args.update(dict(
         name=dict(type='str', required=True),
         password=dict(type='str'),
         key_material=dict(type='str'),
         force=dict(type='bool', default=False),
         state=dict(type='str', default='present', choices=['present', 'absent']),
         description=dict(type='str', default='')
-    )
+    ))
 
     module = AnsibleModule(
         argument_spec=module_args,
@@ -210,7 +217,15 @@ def run_module():
         supports_check_mode=True
     )
 
-    nifcloud_client = nifcloud.session.get_session().create_client('computing')
+    access_key_id = module.params['access_key_id']
+    secret_access_key = module.params['secret_access_key']
+    region = module.params['region']
+    nifcloud_client = nifcloud.session.get_session().create_client(
+        'computing',
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret_access_key,
+        region_name=region
+    )
 
     state = module.params['state']
     name = module.params['name']
