@@ -199,9 +199,7 @@ def import_key_pair(module, nifcloud_client, name, key_material, description, fo
             key = None
         module.exit_json(changed=True, key=key, msg='key pair created')
     elif force:
-        new_fingerprint = get_key_fingerprint(
-            module, nifcloud_client, key_material
-        )
+        new_fingerprint = get_key_fingerprint(nifcloud_client, key_material)
         if found_key['fingerprint'] != new_fingerprint:
             if not module.check_mode:
                 _delete_key_pair(nifcloud_client, name)
@@ -213,7 +211,7 @@ def import_key_pair(module, nifcloud_client, name, key_material, description, fo
     module.exit_json(changed=False, key=key, msg='key pair already exist')
 
 
-def get_key_fingerprint(module, nifcloud_client, key_material):
+def get_key_fingerprint(nifcloud_client, key_material):
     name_in_use = True
     while name_in_use is not None:
         random_name = 'ansible' + str(uuid.uuid4()).replace('-', '')[:-7]
