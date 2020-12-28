@@ -227,7 +227,7 @@ def run_module():
     module_args = module_core_args()
     module_args.update(dict(
         name=dict(type='str', required=True),
-        password=dict(type='str'),
+        password=dict(type='str', no_log=True),
         key_material=dict(type='str'),
         force=dict(type='bool', default=False),
         state=dict(type='str', default='present', choices=['present', 'absent']),
