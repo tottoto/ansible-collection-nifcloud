@@ -99,19 +99,58 @@ key:
 '''
 
 
-def extract_key_data(key):
+def _extract_key_data(key):
     key_data = {
         'name': key['KeyName'],
         'fingerprint': key['KeyFingerprint']
     }
     if 'KeyMaterial' in key:
         key_data.update({'private_key': key['KeyMaterial']})
+    if 'Description' in key:
+        key_data.update({'description': key['Description']})
     return key_data
+
+
+def _create_key_pair(nifcloud_client, name, password, description):
+    response = nifcloud_client.create_key_pair(
+        KeyName=name,
+        Password=password,
+        Description=description
+    )
+    key = _extract_key_data(response)
+    return key
+
+
+def _import_key_pair(nifcloud_client, name, key_material, description):
+    response = nifcloud_client.import_key_pair(
+        KeyName=name,
+        PublicKeyMaterial=key_material,
+        Description=description
+    )
+    key = _extract_key_data(response)
+    return key
+
+
+def _delete_key_pair(nifcloud_client, name):
+    nifcloud_client.delete_key_pair(KeyName=name)
+    return None
+
+
+def _modify_key_pair_description(nifcloud_client, key, description):
+    response = nifcloud_client.nifty_modify_key_pair_attribute(
+        KeyName=key['name'],
+        Attribute='description',
+        Value=description
+    )
+    _key = key.copy()
+    _key['description'] = description
+    return _key
 
 
 def find_key_pair(nifcloud_client, name):
     try:
-        key = nifcloud_client.describe_key_pairs(KeyName=[name])['KeySet'][0]
+        response = nifcloud_client.describe_key_pairs(KeyName=[name])['KeySet'][0]
+        key = _extract_key_data(response)
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == 'Client.InvalidParameterNotFound.KeyPair':
             key = None
@@ -124,40 +163,29 @@ def create_key_pair(module, nifcloud_client, name, password, description):
     found_key = find_key_pair(nifcloud_client, name)
     if found_key is None:
         if not module.check_mode:
-            response = nifcloud_client.create_key_pair(
-                KeyName=name,
-                Password=password,
-                Description=description
-            )
-            key_data = extract_key_data(response)
+            key = _create_key_pair(nifcloud_client, name, password, description)
         else:
-            key_data = None
-        module.exit_json(changed=True, key=key_data, msg='key pair created')
-    elif found_key['Description'] != description:
+            key = None
+        module.exit_json(changed=True, key=key, msg='key pair created')
+    elif found_key['description'] != description:
         if not module.check_mode:
-            response = nifcloud_client.nifty_modify_key_pair_attribute(
-                KeyName=name,
-                Attribute='description',
-                Value=description
-            )
-            key_data = extract_key_data(found_key).update({'description': response['Value']})
+            key = _modify_key_pair_description(nifcloud_client, found_key, description)
         else:
-            key_data = extract_key_data(found_key)
-        module.exit_json(changed=True, key=key_data, msg='key pair description updated')
+            key = found_key
+        module.exit_json(changed=True, key=key, msg='key pair description updated')
     else:
-        key_data = extract_key_data(found_key)
-        module.exit_json(changed=False, key=key_data, msg='key pair already exists')
+        key = found_key
+        module.exit_json(changed=False, key=key, msg='key pair already exists')
 
 
 def delete_key_pair(module, nifcloud_client, name):
     found_key = find_key_pair(nifcloud_client, name)
     if found_key is not None:
         if not module.check_mode:
-            nifcloud_client.delete_key_pair(KeyName=name)
-            key_data = None
+            key = _delete_key_pair(nifcloud_client, name)
         else:
-            key_data = extract_key_data(found_key)
-        module.exit_json(changed=True, key=key_data, msg='key pair deleted')
+            key = found_key
+        module.exit_json(changed=True, key=key, msg='key pair deleted')
     else:
         module.exit_json(changed=False, key=None, msg='key did not exist')
 
@@ -166,33 +194,23 @@ def import_key_pair(module, nifcloud_client, name, key_material, description, fo
     found_key = find_key_pair(nifcloud_client, name)
     if found_key is None:
         if not module.check_mode:
-            response = nifcloud_client.import_key_pair(
-                KeyName=name,
-                PublicKeyMaterial=key_material,
-                Description=description
-            )
-            key_data = extract_key_data(response)
+            key = _import_key_pair(nifcloud_client, name, key_material, description)
         else:
-            key_data = None
-        module.exit_json(changed=True, key=key_data, msg='key pair created')
+            key = None
+        module.exit_json(changed=True, key=key, msg='key pair created')
     elif force:
         new_fingerprint = get_key_fingerprint(
             module, nifcloud_client, key_material
         )
-        if found_key['KeyFingerprint'] != new_fingerprint:
+        if found_key['fingerprint'] != new_fingerprint:
             if not module.check_mode:
-                nifcloud_client.delete_key_pair(KeyName=name)
-                response = nifcloud_client.import_key_pair(
-                    KeyName=name,
-                    PublicKeyMaterial=key_material,
-                    Description=description
-                )
-                key_data = extract_key_data(response)
+                _delete_key_pair(nifcloud_client, name)
+                key = _import_key_pair(nifcloud_client, name, key_material, description)
             else:
-                key_data = None
-            module.exit_json(changed=True, key=key_data, msg='key pair updated')
-    key_data = extract_key_data(found_key)
-    module.exit_json(changed=False, key=key_data, msg='key pair already exist')
+                key = None
+            module.exit_json(changed=True, key=key, msg='key pair updated')
+    key = found_key
+    module.exit_json(changed=False, key=key, msg='key pair already exist')
 
 
 def get_key_fingerprint(module, nifcloud_client, key_material):
@@ -200,14 +218,11 @@ def get_key_fingerprint(module, nifcloud_client, key_material):
     while name_in_use is not None:
         random_name = 'ansible' + str(uuid.uuid4()).replace('-', '')[:-7]
         name_in_use = find_key_pair(nifcloud_client, random_name)
-    tmp_key = nifcloud_client.import_key_pair(
-        KeyName=random_name,
-        PublicKeyMaterial=key_material,
-        Description=''
+    tmp_key = _import_key_pair(
+        nifcloud_client, random_name, key_material, description=''
     )
-    key_data = extract_key_data(tmp_key)
-    nifcloud_client.delete_key_pair(KeyName=random_name)
-    return tmp_key['KeyFingerprint']
+    _delete_key_pair(nifcloud_client, random_name)
+    return tmp_key['fingerprint']
 
 
 def run_module():
