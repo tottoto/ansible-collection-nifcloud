@@ -227,6 +227,12 @@ def import_key_pair(module, nifcloud_client, name, key_material, description, fo
             else:
                 key = None
             module.exit_json(changed=True, key=key, msg='key pair updated')
+    if found_key['description'] != description:
+        if not module.check_mode:
+            key = _modify_key_pair_description(nifcloud_client, found_key, description)
+        else:
+            key = found_key
+        module.exit_json(changed=True, key=key, msg='key pair description updated')
     key = found_key
     module.exit_json(changed=False, key=key, msg='key pair already exist')
 
