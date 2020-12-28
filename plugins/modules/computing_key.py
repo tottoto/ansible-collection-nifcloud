@@ -133,6 +133,17 @@ def create_key_pair(module, nifcloud_client, name, password, description):
         else:
             key_data = None
         module.exit_json(changed=True, key=key_data, msg='key pair created')
+    elif found_key['Description'] != description:
+        if not module.check_mode:
+            response = nifcloud_client.nifty_modify_key_pair_attribute(
+                KeyName=name,
+                Attribute='description',
+                Value=description
+            )
+            key_data = extract_key_data(found_key).update({'description': response['Value']})
+        else:
+            key_data = extract_key_data(found_key)
+        module.exit_json(changed=True, key=key_data, msg='key pair description updated')
     else:
         key_data = extract_key_data(found_key)
         module.exit_json(changed=False, key=key_data, msg='key pair already exists')
