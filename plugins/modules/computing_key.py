@@ -111,14 +111,27 @@ def _extract_key_data(key):
     return key_data
 
 
-def _create_key_pair(nifcloud_client, name, password, description):
-    response = nifcloud_client.create_key_pair(
-        KeyName=name,
-        Password=password,
-        Description=description
-    )
-    key = _extract_key_data(response)
-    return key
+def _create_key_pair(module, nifcloud_client, name, password, description):
+    try:
+        response = nifcloud_client.create_key_pair(
+            KeyName=name,
+            Password=password,
+            Description=description
+        )
+        key = _extract_key_data(response)
+        return key
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'Client.InvalidParameterIllegalInput.KeyPairName':
+            msg='error when finding key pair: the key pair name is invalid'
+        elif error_code == 'Client.InvalidParameterIllegalInput.Password':
+            msg='error when creating key pair: the key pair password is invalid'
+        else:
+            msg='error when creating key pair: unknown client error',
+        module.fail_json(msg=msg, raw=e.response)
+    except Exception as e:
+        msg='error when creating key pair: unknown error'
+        module.fail_json(msg=msg, raw=e.response)
 
 
 def _import_key_pair(nifcloud_client, name, key_material, description):
@@ -147,23 +160,30 @@ def _modify_key_pair_description(nifcloud_client, key, description):
     return _key
 
 
-def find_key_pair(nifcloud_client, name):
+def find_key_pair(module, nifcloud_client, name):
     try:
         response = nifcloud_client.describe_key_pairs(KeyName=[name])['KeySet'][0]
         key = _extract_key_data(response)
+        return key
     except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == 'Client.InvalidParameterNotFound.KeyPair':
-            key = None
+        error_code = e.response['Error']['Code']
+        if error_code == 'Client.InvalidParameterNotFound.KeyPair':
+            return None
+        elif error_code == 'Client.InvalidParameterIllegalInput.KeyPairName':
+            msg='error when finding key pair: the key pair name is invalid'
         else:
-            raise
-    return key
+            msg='error when finding key pair: unknown client error'
+        module.fail_json(msg=msg, raw=e.response)
+    except Exception as e:
+        msg='error when finding key pair: unknown client error'
+        module.fail_json(msg=msg, raw=e.response)
 
 
 def create_key_pair(module, nifcloud_client, name, password, description):
-    found_key = find_key_pair(nifcloud_client, name)
+    found_key = find_key_pair(module, nifcloud_client, name)
     if found_key is None:
         if not module.check_mode:
-            key = _create_key_pair(nifcloud_client, name, password, description)
+            key = _create_key_pair(module, nifcloud_client, name, password, description)
         else:
             key = None
         module.exit_json(changed=True, key=key, msg='key pair created')
@@ -179,7 +199,7 @@ def create_key_pair(module, nifcloud_client, name, password, description):
 
 
 def delete_key_pair(module, nifcloud_client, name):
-    found_key = find_key_pair(nifcloud_client, name)
+    found_key = find_key_pair(module, nifcloud_client, name)
     if found_key is not None:
         if not module.check_mode:
             key = _delete_key_pair(nifcloud_client, name)
@@ -191,7 +211,7 @@ def delete_key_pair(module, nifcloud_client, name):
 
 
 def import_key_pair(module, nifcloud_client, name, key_material, description, force):
-    found_key = find_key_pair(nifcloud_client, name)
+    found_key = find_key_pair(module, nifcloud_client, name)
     if found_key is None:
         if not module.check_mode:
             key = _import_key_pair(nifcloud_client, name, key_material, description)
@@ -199,7 +219,7 @@ def import_key_pair(module, nifcloud_client, name, key_material, description, fo
             key = None
         module.exit_json(changed=True, key=key, msg='key pair created')
     elif force:
-        new_fingerprint = get_key_fingerprint(nifcloud_client, key_material)
+        new_fingerprint = get_key_fingerprint(module, nifcloud_client, key_material)
         if found_key['fingerprint'] != new_fingerprint:
             if not module.check_mode:
                 _delete_key_pair(nifcloud_client, name)
@@ -211,11 +231,11 @@ def import_key_pair(module, nifcloud_client, name, key_material, description, fo
     module.exit_json(changed=False, key=key, msg='key pair already exist')
 
 
-def get_key_fingerprint(nifcloud_client, key_material):
+def get_key_fingerprint(module, nifcloud_client, key_material):
     name_in_use = True
     while name_in_use is not None:
         random_name = 'ansible' + str(uuid.uuid4()).replace('-', '')[:-7]
-        name_in_use = find_key_pair(nifcloud_client, random_name)
+        name_in_use = find_key_pair(module, nifcloud_client, random_name)
     tmp_key = _import_key_pair(
         nifcloud_client, random_name, key_material, description=''
     )
