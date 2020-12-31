@@ -13,3 +13,4 @@ issues: https://github.com/tottoto/ansible-collection-nifcloud/issues
 build_ignore:
   - '__pypackages__'
   - '*.egg-info'
+  - '.pdm.toml'
