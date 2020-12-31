@@ -32,6 +32,8 @@ ansible-galaxy collection install -r requirements.yml
 
 ## Usage
 
+### Module
+
 The supported modules are located in [module directory](./plugins/modules/).
 If there is `some_module_name.py` file in the module directory, the module FQCN is `tottoto.nifcloud.some_module_name`.
 
@@ -40,4 +42,13 @@ For example, you can use this command to get `tottoto.nifcloud.computing_key` do
 
 ```sh
 ansible-doc tottoto.nifcloud.computing_key
+```
+
+### Inventory
+
+The supported inventories are located in [inventory directory](./plugins/inventory/).
+For example, the documentation is shown by this command.
+
+```sh
+ansible-doc -t inventory tottoto.nifcloud.nifcloud_computing
 ```
