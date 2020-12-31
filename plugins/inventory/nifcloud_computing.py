@@ -27,6 +27,16 @@ DOCUMENTATION = '''
       default: []
 '''
 
+EXAMPLES = '''
+  # Minimal example
+  plugin: tottoto.nifcloud.nifcloud_computing
+  regions:
+    - jp-east-2
+  tagging_by_instance_name:
+    - name: test
+      pattern: '.*test.*'
+'''
+
 
 class InventoryModule(BaseInventoryPlugin):
 
