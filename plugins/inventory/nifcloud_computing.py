@@ -1,3 +1,5 @@
+import re
+
 import nifcloud
 from ansible.plugins.inventory import BaseInventoryPlugin
 
@@ -17,6 +19,10 @@ DOCUMENTATION = '''
       choices: ['nifcloud_computing']
     regions:
       description: A list of regions in which to describe NIFCLOUD computing instances.
+      type: list
+      default: []
+    tagging_by_instance_name:
+      description: A list of rules to group instances by the instance name.
       type: list
       default: []
 '''
@@ -40,6 +46,10 @@ class InventoryModule(BaseInventoryPlugin):
         access_key_id = self.get_option('access_key_id')
         secret_access_key = self.get_option('secret_access_key')
         regions = self.get_option('regions')
+
+        tags = self.get_option('tagging_by_instance_name')
+        for tag in tags:
+            self.inventory.add_group(tag['name'])
 
         for region in regions:
             self.inventory.add_group(region)
@@ -73,3 +83,8 @@ class InventoryModule(BaseInventoryPlugin):
 
                     # grouping by the region
                     self.inventory.add_host(host['ip_address'], group=region)
+
+                    # grouping by the pattern of the instance name
+                    for tag in tags:
+                        if re.match(tag['pattern'], host['name']):
+                            self.inventory.add_host(host['ip_address'], group=tag['name'])
