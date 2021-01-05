@@ -1,28 +1,27 @@
 [build-system]
-build-backend = ["pdm.pep517.api"]
+build-backend = "pdm.pep517.api"
 requires = ["pdm-pep517"]
 
-[tool]
-[tool.pdm]
-author = "tottoto <tottotodev@gmail.com>"
-description = ""
-homepage = ""
-license = "GPL-3.0"
+[project]
+authors = [
+    {name = "tottoto", email = "tottotodev@gmail.com"},
+]
 name = "ansible-collection-nifcloud"
-python_requires = ">=3.8"
 version = "0.1.0"
+description = ""
+requires-python = ">=3.8"
+dynamic = ["classifiers"]
+license = {text = "GPL-3.0"}
+dependencies = [
+    "nifcloud==0.3.1",
+]
+dev-dependencies = [
+    "ansible>=2.10.0",
+    "autopep8",
+]
 
-[tool.pdm.dependencies]
-nifcloud = "==0.3.1"
-
-[tool.pdm.dev-dependencies]
-ansible = ">=2.10.0"
-autopep8 = "*"
-
-[[tool.pdm.source]]
-name = "pypi"
-url = "https://pypi.org/simple"
-verify_ssl = true
+[project.urls]
+homepage = "https://github.com/tottoto/ansible-collection-nifcloud"
 
 [tool.autopep8]
 max_line_length = 100
